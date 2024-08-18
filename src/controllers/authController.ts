@@ -3,11 +3,14 @@ import { eq } from "drizzle-orm";
 import db from "../../db/db";
 import { users, type NewUser, type User } from "../../db/schema/userSchema";
 import { BlankEnv, BlankInput } from "hono/types";
+import { hashPassword } from "../utils/passHash";
 
 async function insertNewUser(c: Context<BlankEnv, "/", BlankInput>) {
   const { email, password } = await c.req.json();
 
-  const newUser: NewUser = { email, password };
+  const hashedPass = await hashPassword(password);
+
+  const newUser: NewUser = { email, password: hashedPass };
 
   const insertedUser = await db.insert(users).values(newUser).returning();
 
