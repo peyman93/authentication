@@ -20,3 +20,8 @@ export const insertUserSchema = applyPasswordValidation(
     password: z.string().min(8),
   })
 );
+
+export const registerUserSchema = createInsertSchema(users, {
+  email: z.string().email(),
+  password: z.string().min(8),
+});

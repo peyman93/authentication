@@ -5,7 +5,7 @@ import { users, type NewUser, type User } from "../../db/schema/userSchema";
 import { BlankEnv, BlankInput } from "hono/types";
 import { hashPassword } from "../utils/passHash";
 
-async function insertNewUser(c: Context<BlankEnv, "/", BlankInput>) {
+async function registerNewUser(c: Context<BlankEnv, "/", BlankInput>) {
   const { email, password } = await c.req.json();
 
   const hashedPass = await hashPassword(password);
@@ -19,20 +19,36 @@ async function insertNewUser(c: Context<BlankEnv, "/", BlankInput>) {
   return c.json(insertedUser);
 }
 
-async function deleteUser(c: Context<BlankEnv, "/:id", BlankInput>) {
-  const { id } = c.req.param();
+async function loginUser(c: Context<BlankEnv, "/", BlankInput>) {
+  const { email, password } = await c.req.json();
 
-  const matchFn = eq(users.id, parseInt(id));
+  const matchedUsers = await db.select().from(users).where(eq(users.email, email));
 
-  const deletedUser = await db.delete(users).where(matchFn).returning();
+  if (matchedUsers.length == 0) {
+    c.status(404);
 
-  return c.json(deletedUser);
+    return c.json({ msg: "No Such User" });
+  }
+
+  if (matchedUsers.length > 1) {
+    c.status(500);
+
+    return c.json({ msg: "User is not unique!" });
+  }
+
+  const user = matchedUsers[0];
+
+  const passwordVerified = await Bun.password.verify(password, user.password);
+
+  if (!passwordVerified) {
+    c.status(401);
+
+    return c.json({ msg: "Password is not correct" });
+  }
+
+  c.status(201);
+
+  return c.json({ jwt: "you Are Good :)" });
 }
 
-async function getAllUsers(c: Context<BlankEnv, "/", BlankInput>) {
-  const allUsers: User[] = await db.select().from(users).all();
-
-  return c.json(allUsers);
-}
-
-export { getAllUsers, insertNewUser, deleteUser };
+export { registerNewUser, loginUser };
